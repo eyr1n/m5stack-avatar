@@ -85,8 +85,15 @@ Drawable *Face::getRightEye() { return eyeR; }
 BoundingRect *Face::getBoundingRect() { return boundingRect; }
 
 void Face::draw(DrawContext *ctx) {
-  sprite->createSprite(boundingRect->getWidth(), boundingRect->getHeight());
-  sprite->setColorDepth(ctx->getColorDepth());
+  if (sprite->getBuffer() == nullptr ||
+      sprite->width() != boundingRect->getWidth() ||
+      sprite->height() != boundingRect->getHeight() ||
+      (sprite->getColorDepth() & lgfx::color_depth_t::bit_mask) !=
+          ctx->getColorDepth()) {
+    sprite->deleteSprite();
+    sprite->setColorDepth(ctx->getColorDepth());
+    sprite->createSprite(boundingRect->getWidth(), boundingRect->getHeight());
+  }
   // NOTE: setting below for 1-bit color depth
   sprite->setBitmapColor(ctx->getColorPalette()->get(COLOR_PRIMARY),
     ctx->getColorPalette()->get(COLOR_BACKGROUND));
@@ -129,6 +136,14 @@ void Face::draw(DrawContext *ctx) {
   float scale = ctx->getScale();
   float rotation = ctx->getRotation();
 
+  if (rotation == 0.0f && scale == 1.0f) {
+    M5.Display.startWrite();
+    sprite->pushSprite(&M5.Display, boundingRect->getLeft(),
+                       boundingRect->getTop());
+    M5.Display.endWrite();
+    return;
+  }
+
 // ▼▼▼▼ここから▼▼▼▼
   static constexpr uint8_t y_step = 8;
 
@@ -168,7 +183,5 @@ void Face::draw(DrawContext *ctx) {
 // 削除するのが良いかどうか要検討 (次回メモリ確保できない場合は描画できなくなるので、維持しておいても良いかも？)
 // tmpSprite->deleteSprite();
 // ▲▲▲▲ここまで▲▲▲▲
-
-  sprite->deleteSprite();
 }
 }  // namespace m5avatar
